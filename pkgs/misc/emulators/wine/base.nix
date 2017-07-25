@@ -22,6 +22,7 @@ stdenv.mkDerivation ((lib.optionalAttrs (! isNull buildScript) {
 
   buildInputs = toBuildInputs pkgArches (with supportFlags; (pkgs:
   [ pkgs.freetype ]
+  ++ lib.optional stdenv.isLinux         pkgs.libcap
   ++ lib.optional pngSupport             pkgs.libpng
   ++ lib.optional jpegSupport            pkgs.libjpeg
   ++ lib.optional cupsSupport            pkgs.cups
@@ -91,9 +92,13 @@ stdenv.mkDerivation ((lib.optionalAttrs (! isNull buildScript) {
           ((map (links "share/wine/gecko") geckos)
         ++ (map (links "share/wine/mono")  monos))}
   '' + lib.optionalString supportFlags.gstreamerSupport ''
-    wrapProgram "$out/bin/wine" \
-      --argv0 "" \
-      --prefix GST_PLUGIN_SYSTEM_PATH_1_0 ":" "$GST_PLUGIN_SYSTEM_PATH_1_0"
+    for i in wine wine64; do
+      if [ -e "$out/bin/$i" ]; then
+        wrapProgram "$out/bin/$i" \
+          --argv0 "" \
+          --prefix GST_PLUGIN_SYSTEM_PATH_1_0 ":" "$GST_PLUGIN_SYSTEM_PATH_1_0"
+      fi
+    done
   '';
   
   enableParallelBuilding = true;
