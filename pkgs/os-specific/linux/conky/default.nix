@@ -26,6 +26,7 @@
 , toluapp ? null
 
 , wirelessSupport     ? true      , wirelesstools ? null
+, nvidiaSupport       ? false     , libXNVCtrl ? null
 
 , curlSupport         ? true      , curl ? null
 , rssSupport          ? curlSupport
@@ -52,6 +53,7 @@ assert luaCairoSupport || luaImlib2Support
                            -> lua.luaversion == "5.1";
 
 assert wirelessSupport     -> wirelesstools != null;
+assert nvidiaSupport       -> libXNVCtrl != null;
 
 assert curlSupport         -> curl != null;
 assert rssSupport          -> curlSupport && libxml2 != null;
@@ -87,7 +89,8 @@ stdenv.mkDerivation rec {
 
   NIX_LDFLAGS = "-lgcc_s";
 
-  buildInputs = [ pkgconfig glib cmake libXinerama ]
+  nativeBuildInputs = [ pkgconfig ];
+  buildInputs = [ glib cmake libXinerama ]
     ++ optionals docsSupport        [ docbook2x libxslt man less ]
     ++ optional  ncursesSupport     ncurses
     ++ optional  x11Support         xlibsWrapper
@@ -100,6 +103,7 @@ stdenv.mkDerivation rec {
     ++ optional  curlSupport        curl
     ++ optional  rssSupport         libxml2
     ++ optional  weatherXoapSupport libxml2
+    ++ optional  nvidiaSupport      libXNVCtrl
     ;
 
   cmakeFlags = []
@@ -118,6 +122,7 @@ stdenv.mkDerivation rec {
     ++ optional weatherMetarSupport "-DBUILD_WEATHER_METAR=ON"
     ++ optional weatherXoapSupport  "-DBUILD_WEATHER_XOAP=ON"
     ++ optional wirelessSupport     "-DBUILD_WLAN=ON"
+    ++ optional nvidiaSupport       "-DBUILD_NVIDIA=ON"
     ;
 
   meta = with stdenv.lib; {

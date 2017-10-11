@@ -21,11 +21,11 @@ assert scpSupport -> libssh2 != null;
 assert c-aresSupport -> c-ares != null;
 
 stdenv.mkDerivation rec {
-  name = "curl-7.54.1";
+  name = "curl-7.56.0";
 
   src = fetchurl {
     url = "http://curl.haxx.se/download/${name}.tar.bz2";
-    sha256 = "1815iz5a7qghipjcl7s97hk4jqh4f3kqc487xi20rvh1s3r4vz7x";
+    sha256 = "1pvr2bqfhk46bzq2x2hskmnq3wc8qxlps7apm9q1qiixb9ra8q6y";
   };
 
   outputs = [ "bin" "dev" "out" "man" "devdoc" ];
@@ -49,7 +49,7 @@ stdenv.mkDerivation rec {
     optional gnutlsSupport gnutls ++
     optional scpSupport libssh2;
 
-  # for the second line see http://curl.haxx.se/mail/tracker-2014-03/0087.html
+  # for the second line see https://curl.haxx.se/mail/tracker-2014-03/0087.html
   preConfigure = ''
     sed -e 's|/usr/bin|/no-such-path|g' -i.bak configure
     rm src/tool_hugehelp.c
@@ -68,8 +68,8 @@ stdenv.mkDerivation rec {
     ++ stdenv.lib.optional c-aresSupport "--enable-ares=${c-ares}"
     ++ stdenv.lib.optional gssSupport "--with-gssapi=${gss}";
 
-  CXX = "g++";
-  CXXCPP = "g++ -E";
+  CXX = "c++";
+  CXXCPP = "c++ -E";
 
   postInstall = ''
     moveToOutput bin/curl-config "$dev"
@@ -96,7 +96,7 @@ stdenv.mkDerivation rec {
 
   meta = with stdenv.lib; {
     description = "A command line tool for transferring files with URL syntax";
-    homepage    = http://curl.haxx.se/;
+    homepage    = https://curl.haxx.se/;
     maintainers = with maintainers; [ lovek323 ];
     platforms   = platforms.all;
   };

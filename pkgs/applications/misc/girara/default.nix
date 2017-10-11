@@ -18,7 +18,8 @@ stdenv.mkDerivation rec {
       --replace 'ifdef TPUT_AVAILABLE' 'ifneq ($(TPUT_AVAILABLE), 0)'
   '';
 
-  buildInputs = [ pkgconfig gtk gettext libintlOrEmpty ]
+  nativeBuildInputs = [ pkgconfig ];
+  buildInputs = [ gtk gettext libintlOrEmpty ]
     ++ stdenv.lib.optional stdenv.isDarwin libiconv;
 
   NIX_LDFLAGS = stdenv.lib.optionalString stdenv.isDarwin "-lintl";
@@ -31,7 +32,7 @@ stdenv.mkDerivation rec {
   ];
 
   meta = with stdenv.lib; {
-    homepage = http://pwmt.org/projects/girara/;
+    homepage = https://pwmt.org/projects/girara/;
     description = "User interface library";
     longDescription = ''
       girara is a library that implements a GTK+ based VIM-like user interface

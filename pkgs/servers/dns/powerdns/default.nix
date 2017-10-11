@@ -12,7 +12,8 @@ stdenv.mkDerivation rec {
     sha256 = "10p2m2zbydbd5xjdgf8z4zgvl8diyb4k3bq1hzsl32r71daj3yk0";
   };
 
-  buildInputs = [ boost libmysql postgresql lua openldap sqlite protobuf geoip libyamlcpp pkgconfig libsodium curl ];
+  nativeBuildInputs = [ pkgconfig ];
+  buildInputs = [ boost libmysql postgresql lua openldap sqlite protobuf geoip libyamlcpp libsodium curl ];
 
   # nix destroy with-modules arguments, when using configureFlags
   preConfigure = ''
@@ -32,7 +33,7 @@ stdenv.mkDerivation rec {
 
   meta = with stdenv.lib; {
     description = "Authoritative DNS server";
-    homepage = http://www.powerdns.com/;
+    homepage = https://www.powerdns.com;
     platforms = platforms.linux;
     # cannot find postgresql libs on macos x
     license = licenses.gpl2;

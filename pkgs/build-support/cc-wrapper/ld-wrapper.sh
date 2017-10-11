@@ -1,6 +1,10 @@
 #! @shell@
-set -e -o pipefail
+set -eu -o pipefail
 shopt -s nullglob
+
+if (( "${NIX_DEBUG:-0}" >= 7 )); then
+    set -x
+fi
 
 path_backup="$PATH"
 
@@ -10,11 +14,7 @@ if [ -n "@coreutils_bin@" ]; then
     PATH="@coreutils_bin@/bin"
 fi
 
-if [ -n "$NIX_LD_WRAPPER_START_HOOK" ]; then
-    source "$NIX_LD_WRAPPER_START_HOOK"
-fi
-
-if [ -z "$NIX_CC_WRAPPER_FLAGS_SET" ]; then
+if [ -z "${NIX_CC_WRAPPER_@infixSalt@_FLAGS_SET:-}" ]; then
     source @out@/nix-support/add-flags.sh
 fi
 
@@ -23,14 +23,14 @@ source @out@/nix-support/utils.sh
 
 # Optionally filter out paths not refering to the store.
 expandResponseParams "$@"
-if [[ "$NIX_ENFORCE_PURITY" = 1 && -n "$NIX_STORE"
-        && ( -z "$NIX_IGNORE_LD_THROUGH_GCC" || -z "$NIX_LDFLAGS_SET" ) ]]; then
+if [[ "${NIX_ENFORCE_PURITY:-}" = 1 && -n "${NIX_STORE:-}"
+        && ( -z "$NIX_@infixSalt@_IGNORE_LD_THROUGH_GCC" || -z "${NIX_@infixSalt@_LDFLAGS_SET:-}" ) ]]; then
     rest=()
     nParams=${#params[@]}
     declare -i n=0
-    while [ "$n" -lt "$nParams" ]; do
+    while (( "$n" < "$nParams" )); do
         p=${params[n]}
-        p2=${params[n+1]}
+        p2=${params[n+1]:-} # handle `p` being last one
         if [ "${p:0:3}" = -L/ ] && badPath "${p:2}"; then
             skip "${p:2}"
         elif [ "$p" = -L ] && badPath "$p2"; then
@@ -51,7 +51,8 @@ if [[ "$NIX_ENFORCE_PURITY" = 1 && -n "$NIX_STORE"
         fi
         n+=1
     done
-    params=("${rest[@]}")
+    # Old bash empty array hack
+    params=(${rest+"${rest[@]}"})
 fi
 
 source @out@/nix-support/add-hardening.sh
@@ -59,27 +60,49 @@ source @out@/nix-support/add-hardening.sh
 extraAfter=("${hardeningLDFlags[@]}")
 extraBefore=()
 
-if [ -z "$NIX_LDFLAGS_SET" ]; then
-    extraAfter+=($NIX_LDFLAGS)
-    extraBefore+=($NIX_LDFLAGS_BEFORE)
+if [ -z "${NIX_@infixSalt@_LDFLAGS_SET:-}" ]; then
+    extraAfter+=($NIX_@infixSalt@_LDFLAGS)
+    extraBefore+=($NIX_@infixSalt@_LDFLAGS_BEFORE)
 fi
 
-extraAfter+=($NIX_LDFLAGS_AFTER $NIX_LDFLAGS_HARDEN)
+extraAfter+=($NIX_@infixSalt@_LDFLAGS_AFTER)
 
+# Three tasks:
+#
+#   1. Find all -L... switches for rpath
+#
+#   2. Find relocatable flag for build id.
+#
+#   3. Choose 32-bit dynamic linker if needed
 declare -a libDirs
 declare -A libs
-relocatable=
+declare -i relocatable=0 link32=0
 
-# Find all -L... switches for rpath, and relocatable flags for build id.
-if [ "$NIX_DONT_SET_RPATH" != 1 ] || [ "$NIX_SET_BUILD_ID" = 1 ]; then
+if
+    [ "$NIX_@infixSalt@_DONT_SET_RPATH" != 1 ] \
+        || [ "$NIX_@infixSalt@_SET_BUILD_ID" = 1 ] \
+        || [ -e @out@/nix-support/dynamic-linker-m32 ]
+then
     prev=
-    for p in "${extraBefore[@]}" "${params[@]}" "${extraAfter[@]}"; do
+    # Old bash thinks empty arrays are undefined, ugh.
+    for p in \
+        ${extraBefore+"${extraBefore[@]}"} \
+        ${params+"${params[@]}"} \
+        ${extraAfter+"${extraAfter[@]}"}
+    do
         case "$prev" in
             -L)
                 libDirs+=("$p")
                 ;;
             -l)
                 libs["lib${p}.so"]=1
+                ;;
+            -m)
+                # Presumably only the last `-m` flag has any effect.
+                case "$p" in
+                    elf_i386) link32=1;;
+                    *)        link32=0;;
+                esac
                 ;;
             -dynamic-linker | -plugin)
                 # Ignore this argument, or it will match *.so and be added to rpath.
@@ -92,7 +115,7 @@ if [ "$NIX_DONT_SET_RPATH" != 1 ] || [ "$NIX_SET_BUILD_ID" = 1 ]; then
                     -l?*)
                         libs["lib${p:2}.so"]=1
                         ;;
-                    "$NIX_STORE"/*.so | "$NIX_STORE"/*.so.*)
+                    "${NIX_STORE:-}"/*.so | "${NIX_STORE:-}"/*.so.*)
                         # This is a direct reference to a shared library.
                         libDirs+=("${p%/*}")
                         libs["${p##*/}"]=1
@@ -106,59 +129,75 @@ if [ "$NIX_DONT_SET_RPATH" != 1 ] || [ "$NIX_SET_BUILD_ID" = 1 ]; then
     done
 fi
 
+if [ -e "@out@/nix-support/dynamic-linker-m32" ] && (( "$link32" )); then
+    # We have an alternate 32-bit linker and we're producing a 32-bit ELF, let's
+    # use it.
+    extraAfter+=(
+        '-dynamic-linker'
+        "$(< @out@/nix-support/dynamic-linker-m32)"
+    )
+fi
 
 # Add all used dynamic libraries to the rpath.
-if [ "$NIX_DONT_SET_RPATH" != 1 ]; then
+if [ "$NIX_@infixSalt@_DONT_SET_RPATH" != 1 ]; then
     # For each directory in the library search path (-L...),
     # see if it contains a dynamic library used by a -l... flag.  If
     # so, add the directory to the rpath.
     # It's important to add the rpath in the order of -L..., so
     # the link time chosen objects will be those of runtime linking.
     declare -A rpaths
-    for dir in "${libDirs[@]}"; do
+    for dir in ${libDirs+"${libDirs[@]}"}; do
         if [[ "$dir" =~ [/.][/.] ]] && dir2=$(readlink -f "$dir"); then
             dir="$dir2"
         fi
-        if [ "${rpaths[$dir]}" ] || [[ "$dir" != "$NIX_STORE"/* ]]; then
+        if [ -n "${rpaths[$dir]:-}" ] || [[ "$dir" != "${NIX_STORE:-}"/* ]]; then
             # If the path is not in the store, don't add it to the rpath.
             # This typically happens for libraries in /tmp that are later
             # copied to $out/lib.  If not, we're screwed.
             continue
         fi
-        for path in "$dir"/lib*.so; do
+        for path in "$dir"/*; do
             file="${path##*/}"
-            if [ "${libs[$file]}" ]; then
-                libs["$file"]=
-                if [ ! "${rpaths[$dir]}" ]; then
-                    rpaths["$dir"]=1
-                    extraAfter+=(-rpath "$dir")
-                fi
+            if [ "${libs[$file]:-}" ]; then
+                # This library may have been provided by a previous directory,
+                # but if that library file is inside an output of the current
+                # derivation, it can be deleted after this compilation and
+                # should be found in a later directory, so we add all
+                # directories that contain any of the libraries to rpath.
+                rpaths["$dir"]=1
+                extraAfter+=(-rpath "$dir")
+                break
             fi
         done
     done
+
+    if [ -n "${NIX_COREFOUNDATION_RPATH:-}" ]; then
+      extraAfter+=(-rpath $NIX_COREFOUNDATION_RPATH)
+    fi
 fi
 
 
 # Only add --build-id if this is a final link. FIXME: should build gcc
 # with --enable-linker-build-id instead?
-if [ "$NIX_SET_BUILD_ID" = 1 ] && [ ! "$relocatable" ]; then
+if [ "$NIX_@infixSalt@_SET_BUILD_ID" = 1 ] && ! (( "$relocatable" )); then
     extraAfter+=(--build-id)
 fi
 
 
 # Optionally print debug info.
-if [ -n "$NIX_DEBUG" ]; then
+if (( "${NIX_DEBUG:-0}" >= 1 )); then
+    # Old bash workaround, see above.
     echo "extra flags before to @prog@:" >&2
-    printf "  %q\n" "${extraBefore[@]}"  >&2
+    printf "  %q\n" ${extraBefore+"${extraBefore[@]}"}  >&2
     echo "original flags to @prog@:" >&2
-    printf "  %q\n" "${params[@]}" >&2
+    printf "  %q\n" ${params+"${params[@]}"} >&2
     echo "extra flags after to @prog@:" >&2
-    printf "  %q\n" "${extraAfter[@]}" >&2
-fi
-
-if [ -n "$NIX_LD_WRAPPER_EXEC_HOOK" ]; then
-    source "$NIX_LD_WRAPPER_EXEC_HOOK"
+    printf "  %q\n" ${extraAfter+"${extraAfter[@]}"} >&2
 fi
 
 PATH="$path_backup"
-exec @prog@ "${extraBefore[@]}" "${params[@]}" "${extraAfter[@]}"
+# Old bash workaround, see above.
+exec @prog@ \
+    ${extraBefore+"${extraBefore[@]}"} \
+    ${params+"${params[@]}"} \
+    ${extraAfter+"${extraAfter[@]}"}

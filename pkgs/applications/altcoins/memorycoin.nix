@@ -13,7 +13,8 @@ stdenv.mkDerivation rec{
     sha256 = "1iyh6dqrg0mirwci5br5n5qw3ghp2cs23wd8ygr56bh9ml4dr1m8";
   };
 
-  buildInputs = [ pkgconfig openssl db48 boost zlib utillinux protobuf ]
+  nativeBuildInputs = [ pkgconfig ];
+  buildInputs = [ openssl db48 boost zlib utillinux protobuf ]
                   ++ optionals withGui [ qt4 qmake4Hook qrencode ];
 
   qmakeFlags = ["USE_UPNP=-"];
@@ -22,7 +23,8 @@ stdenv.mkDerivation rec{
   configureFlags = [ "--with-boost-libdir=${boost.out}/lib" ]
                      ++ optionals withGui [ "--with-gui=qt4" ];
 
-  preBuild = optional (!withGui) "cd src; cp makefile.unix Makefile";
+  preBuild = "unset AR;"
+             + (toString (optional (!withGui) "cd src; cp makefile.unix Makefile"));
 
   installPhase =
     if withGui

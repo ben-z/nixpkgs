@@ -10,7 +10,8 @@ stdenv.mkDerivation {
 
   makeFlags = "RM=rm LN=ln MV=mv";
 
-  buildInputs = [ lame libvorbis libmad pkgconfig libao ];
+  nativeBuildInputs = [ pkgconfig ];
+  buildInputs = [ lame libvorbis libmad libao ];
 
   hardeningDisable = [ "format" ];
 
@@ -23,6 +24,9 @@ stdenv.mkDerivation {
   postPatch = ''
     sed -i 's,linux/../,,g' dao/sg_err.h
   '';
+
+  # Needed on gcc >= 6.
+  NIX_CFLAGS_COMPILE = "-Wno-narrowing";
 
   meta = {
     description = "A tool for recording audio or data CD-Rs in disk-at-once (DAO) mode";

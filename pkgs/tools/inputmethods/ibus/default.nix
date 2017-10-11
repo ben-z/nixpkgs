@@ -48,6 +48,15 @@ let
       sha256 = "1a3qzsab7vzjqpdialp1g8ppr21x05v0ph8ngyq9pyjkx4vzcdi7";
     };
   };
+  pyEnv = python3.buildEnv.override {
+    extraLibs = [ python3.pkgs.pygobject3 ];
+
+    # ImportError: No module named site
+    postBuild = ''
+      makeWrapper '${glib.dev}/bin/glib-genmarshal' "$out"/bin/glib-genmarshal \
+        --unset PYTHONPATH
+    '';
+  };
 in stdenv.mkDerivation rec {
   name = "ibus-${version}";
   version = "1.5.16";
@@ -77,16 +86,16 @@ in stdenv.mkDerivation rec {
   ];
 
   buildInputs = [
-    python3
+    pyEnv
     intltool isocodes pkgconfig
     gtk2 gtk3 dconf
     json_glib
     dbus libnotify gobjectIntrospection wayland
   ];
 
-  propagatedBuildInputs = [ glib python3.pkgs.pygobject3 ];
+  propagatedBuildInputs = [ glib ];
 
-  nativeBuildInputs = [ wrapGAppsHook python3.pkgs.wrapPython ];
+  nativeBuildInputs = [ wrapGAppsHook ];
 
   outputs = [ "out" "dev" ];
 
@@ -104,13 +113,12 @@ in stdenv.mkDerivation rec {
     substituteInPlace data/dconf/Makefile.in --replace "dconf update" "echo"
   '';
 
-  postFixup = ''
-    buildPythonPath $out
-    patchPythonScript $out/share/ibus/setup/main.py
-  '';
-
   doInstallCheck = true;
   installCheckPhase = "$out/bin/ibus version";
+
+  postInstall = ''
+    moveToOutput "bin/ibus-setup" "$dev"
+  '';
 
   meta = with stdenv.lib; {
     homepage = https://github.com/ibus/ibus;

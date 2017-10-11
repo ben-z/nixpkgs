@@ -14,11 +14,11 @@
 buildPythonPackage rec {
   pname = "Cython";
   name = "${pname}-${version}";
-  version = "0.25.2";
+  version = "0.26.1";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "01h3lrf6d98j07iakifi81qjszh6faa37ibx7ylva1vsqbwx2hgi";
+    sha256 = "c2e63c4794161135adafa8aa4a855d6068073f421c83ffacc39369497a189dd5";
   };
 
   # With Python 2.x on i686-linux or 32-bit ARM this test fails because the
@@ -30,10 +30,12 @@ buildPythonPackage rec {
       tests/run/cpdef_enums.pyx
   '';
 
-  buildInputs = [ glibcLocales pkgconfig gdb ];
-  # For testing
-  nativeBuildInputs = [ numpy ncurses ];
-
+  nativeBuildInputs = [
+    pkgconfig
+    # For testing
+    numpy ncurses
+  ];
+  buildInputs = [ glibcLocales gdb ];
   LC_ALL = "en_US.UTF-8";
 
   # cython's testsuite is not working very well with libc++

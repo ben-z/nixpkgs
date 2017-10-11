@@ -20,7 +20,8 @@ let
 
       enableParallelBuilding = true;
 
-      buildInputs = [ flex bison pkgconfig ]
+  nativeBuildInputs = [ pkgconfig ];
+      buildInputs = [ flex bison ]
         ++ lib.optional stdenv.isLinux systemd;
 
       flags = {
@@ -330,12 +331,12 @@ in {
   };
 
   php70 = generic {
-    version = "7.0.21";
-    sha256 = "07r3qqyyvf16k4xk5b2070fwilggmph5937drjm8cvyyjb1k789b";
+    version = "7.0.24";
+    sha256 = "06fgpljz6xpxxkpf4cv9rqz8g504l9ikbw5aq0hqh5sgd611kycv";
   };
 
   php71 = generic {
-    version = "7.1.7";
-    sha256 = "1y0z5n0kyd15wzmn1lprjgaysbg0z428q9cjbx4dqf3zk296g6q7";
+    version = "7.1.9";
+    sha256 = "1blvzm2js8mrdbmwks0v6nlb5wj4789ixzmlxm1l8z6xvw8cqk9i";
   };
 }

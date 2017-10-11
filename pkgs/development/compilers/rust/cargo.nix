@@ -18,7 +18,8 @@ rustPlatform.buildRustPackage rec {
 
   passthru.rustc = rustc;
 
-  buildInputs = [ file curl pkgconfig python openssl cmake zlib makeWrapper libgit2 ]
+  nativeBuildInputs = [ pkgconfig ];
+  buildInputs = [ file curl python openssl cmake zlib makeWrapper libgit2 ]
     ++ stdenv.lib.optionals stdenv.isDarwin [ libiconv ];
 
   LIBGIT2_SYS_USE_PKG_CONFIG=1;
@@ -47,7 +48,7 @@ rustPlatform.buildRustPackage rec {
   doCheck = false;
 
   meta = with stdenv.lib; {
-    homepage = http://crates.io;
+    homepage = https://crates.io;
     description = "Downloads your Rust project's dependencies and builds your project";
     maintainers = with maintainers; [ wizeman retrry ];
     license = [ licenses.mit licenses.asl20 ];
