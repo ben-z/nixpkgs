@@ -94,7 +94,8 @@ let
       rev = "v${version}";
       sha256 = "19sy49r3ijh36m7hl4vspw5c4i8pnfqdn4ldm2sqchxigkw56ayl";
     };
-    buildInputs = with external; [ autoconf automake libpng zlib poppler pkgconfig ];
+    nativeBuildInputs = [ external.pkgconfig ];
+    buildInputs = with external; [ autoconf automake libpng zlib poppler ];
     preBuild = "make server/epdfinfo";
     fileSpecs = [ "lisp/pdf-*.el" "server/epdfinfo" ];
     packageRequires = [ tablist let-alist ];
@@ -269,8 +270,11 @@ let
 
   rtags = melpaBuild rec {
     pname = "rtags";
-    version = "2.0"; # really, it's some arbitrary git hash
+    version = "2.12";
     src = external.rtags.src;
+
+    configurePhase = ":";
+
     propagatedUserEnvPkgs = [ external.rtags ];
     fileSpecs = [ "src/*.el" ];
     inherit (external.rtags) meta;

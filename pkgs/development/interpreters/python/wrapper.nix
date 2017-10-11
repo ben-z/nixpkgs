@@ -1,5 +1,6 @@
 { stdenv, python, buildEnv, makeWrapper
 , extraLibs ? []
+, extraOutputsToInstall ? []
 , postBuild ? ""
 , ignoreCollisions ? false }:
 
@@ -12,7 +13,7 @@ let
     name = "${python.name}-env";
 
     inherit paths;
-    inherit ignoreCollisions;
+    inherit ignoreCollisions extraOutputsToInstall;
 
     postBuild = ''
       . "${makeWrapper}/nix-support/setup-hook"
@@ -28,7 +29,9 @@ let
           for prg in *; do
             if [ -f "$prg" ]; then
               rm -f "$out/bin/$prg"
-              makeWrapper "$path/bin/$prg" "$out/bin/$prg" --set PYTHONHOME "$out" --set PYTHONNOUSERSITE "true"
+              if [ -x "$prg" ]; then
+                makeWrapper "$path/bin/$prg" "$out/bin/$prg" --set PYTHONHOME "$out" --set PYTHONNOUSERSITE "true"
+              fi
             fi
           done
         fi

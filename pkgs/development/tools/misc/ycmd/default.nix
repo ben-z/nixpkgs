@@ -1,4 +1,5 @@
-{ stdenv, lib, fetchgit, cmake, llvmPackages, boost, python
+{ stdenv, lib, fetchgit, cmake, llvmPackages, boost, python, nodejs, nodePackages
+, ternCompleter ? true
 , gocode ? null
 , godef ? null
 , rustracerd ? null
@@ -11,19 +12,19 @@ stdenv.mkDerivation rec {
 
   src = fetchgit {
     url = "git://github.com/Valloric/ycmd.git";
-    rev = "2ef1ae0d00a06a47fed3aacfd465a310e8bdb0d2";
-    sha256 = "0p5knlxgy66zi229ns1lfdhz5lram93vahmmk54w98fr3h8b1yfj";
+    rev = "1ebfbd4ca5bbfcb49817967dfc9fbc3f82312f66";
+    sha256 = "0c7sqhi6qfisspwhpf6dbqi379mlymqbg545hgnysk8kw2ppvzfb";
   };
 
   buildInputs = [ cmake boost ]
+    ++ (if ternCompleter then [ nodejs ] else [])
     ++ stdenv.lib.optional stdenv.isDarwin [ fixDarwinDylibNames Cocoa ];
 
   buildPhase = ''
     export EXTRA_CMAKE_ARGS=-DPATH_TO_LLVM_ROOT=${llvmPackages.clang-unwrapped}
-    ${python.interpreter} build.py --clang-completer --system-boost
+    ${python.interpreter} build.py --clang-completer \
+      ${if ternCompleter then "--tern-completer" else ""} --system-boost
   '';
-
-  patches = [ ./dont-symlink-clang.patch ];
 
   configurePhase = ":";
 
@@ -50,7 +51,7 @@ stdenv.mkDerivation rec {
     mkdir -p $out/bin
     ln -s $out/lib/ycmd/ycmd/__main__.py $out/bin/ycmd
 
-    mkdir -p $out/lib/ycmd/third_party/{gocode,godef,racerd/target/release}
+    mkdir -p $out/lib/ycmd/third_party/{gocode,godef,racerd/target/release,tern_runtime/node_modules}
 
     cp -r third_party/JediHTTP $out/lib/ycmd/third_party
     for p in waitress frozendict bottle python-future argparse requests; do
@@ -63,7 +64,11 @@ stdenv.mkDerivation rec {
     ln -s ${godef}/bin/godef $out/lib/ycmd/third_party/godef
   '' + lib.optionalString (rustracerd != null) ''
     ln -s ${rustracerd}/bin/racerd $out/lib/ycmd/third_party/racerd/target/release
+  '' + lib.optionalString (ternCompleter == true) ''
+    ln -s ${nodePackages.tern} $out/lib/ycmd/third_party/tern_runtime/node_modules/tern
   '';
+
+  patches = [ ./dont-install-tern-with-npm.patch ];
 
   # fixup the argv[0] and replace __file__ with the corresponding path so
   # python won't be thrown off by argv[0]

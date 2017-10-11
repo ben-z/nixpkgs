@@ -2,16 +2,17 @@
   pythonOlder,
   geos, gdal, pytz
 }:
+
 buildPythonPackage rec {
   pname = "Django";
   name = "${pname}-${version}";
-  version = "1.11.4";
+  version = "1.11.5";
 
   disabled = pythonOlder "2.7";
 
   src = fetchurl {
     url = "http://www.djangoproject.com/m/releases/1.11/${name}.tar.gz";
-    sha256 = "1ckvq2sdlgpy2sqy6fwl84ms9dggvdbys9x76qapm2d9vmknxs5b";
+    sha256 = "0a9bk1a0n0264lcr67fmwzqyhkhy6bqdzkxsj9a8dpyzca0qfdhq";
   };
 
   patches = [
@@ -19,6 +20,7 @@ buildPythonPackage rec {
       src = ./1.10-gis-libs.template.patch;
       geos = geos;
       gdal = gdal;
+      extension = stdenv.hostPlatform.extensions.sharedLibrary;
     })
   ];
 

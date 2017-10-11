@@ -12,7 +12,7 @@ assert enableGeoLocation -> geoclue2 != null;
 with stdenv.lib;
 stdenv.mkDerivation rec {
   name = "webkitgtk-${version}";
-  version = "2.16.4";
+  version = "2.16.6";
 
   meta = {
     description = "Web content rendering engine, GTK+ port";
@@ -42,7 +42,7 @@ stdenv.mkDerivation rec {
 
   src = fetchurl {
     url = "http://webkitgtk.org/releases/${name}.tar.xz";
-    sha256 = "0a2ikwiw1wn8w11y9ci6nn6dq9w0iki48l9lhnbm7g8rhcrs9azr";
+    sha256 = "08abxbhi2n1pfby9f2c20z8mpmbvbs2z7vf0p5ckq4jkz46na8zw";
   };
 
   # see if we can clean this up....
@@ -83,14 +83,14 @@ stdenv.mkDerivation rec {
                      + (optionalString stdenv.isDarwin " -lintl");
 
   nativeBuildInputs = [
-    cmake perl python2 ruby bison gperf sqlite
+    cmake perl python2 ruby bison gperf
     pkgconfig gettext gobjectIntrospection
   ];
 
   buildInputs = libintlOrEmpty ++ [
     gtk2 libwebp enchant libnotify gnutls pcre nettle libidn
     libxml2 libsecret libxslt harfbuzz libpthreadstubs libtasn1 p11_kit
-    gst-plugins-base libxkbcommon epoxy at_spi2_core
+    sqlite gst-plugins-base libxkbcommon epoxy at_spi2_core
   ] ++ optional enableGeoLocation geoclue2
     ++ (with xlibs; [ libXdmcp libXt libXtst ])
     ++ optionals stdenv.isDarwin [ libedit readline mesa ]
@@ -101,4 +101,6 @@ stdenv.mkDerivation rec {
   ];
 
   enableParallelBuilding = true;
+
+  outputs = [ "out" "dev" ];
 }

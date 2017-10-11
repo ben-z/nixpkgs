@@ -1,18 +1,19 @@
 { fetchurl, stdenv, curl, openssl, zlib, expat, perl, python, gettext, cpio
 , gnugrep, gnused, gawk, coreutils # needed at runtime by git-filter-branch etc
-, gzip, openssh
+, gzip, openssh, pcre2
 , asciidoc, texinfo, xmlto, docbook2x, docbook_xsl, docbook_xml_dtd_45
 , libxslt, tcl, tk, makeWrapper, libiconv
 , svnSupport, subversionClient, perlLibs, smtpPerlLibs, gitwebPerlLibs
 , guiSupport
 , withManual ? true
 , pythonSupport ? true
+, withpcre2 ? true
 , sendEmailSupport
 , darwin
 }:
 
 let
-  version = "2.14.0";
+  version = "2.14.2";
   svn = subversionClient.override { perlBindings = true; };
 in
 
@@ -21,7 +22,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://www.kernel.org/pub/software/scm/git/git-${version}.tar.xz";
-    sha256 = "0xarcp0m7jbncic0g3ahz8l2d6b27h0g9ndgrhy9abkx61m6wgpr";
+    sha256 = "18f70gfzwqd210806hmf94blcd7yv5h9ka6xqkpd2jhijqwp5sah";
   };
 
   hardeningDisable = [ "format" ];
@@ -44,6 +45,7 @@ stdenv.mkDerivation {
     ++ stdenv.lib.optionals withManual [ asciidoc texinfo xmlto docbook2x
          docbook_xsl docbook_xml_dtd_45 libxslt ]
     ++ stdenv.lib.optionals guiSupport [tcl tk]
+    ++ stdenv.lib.optionals withpcre2 [ pcre2 ]
     ++ stdenv.lib.optionals stdenv.isDarwin [ darwin.Security ];
 
 
@@ -70,7 +72,9 @@ stdenv.mkDerivation {
   # so that `SPARSE_FLAGS' corresponds to the current architecture...
   #doCheck = true;
 
-  installFlags = "NO_INSTALL_HARDLINKS=1";
+  installFlags = "NO_INSTALL_HARDLINKS=1"
+    + (if withpcre2 then " USE_LIBPCRE2=1" else "");
+
 
   preInstall = stdenv.lib.optionalString stdenv.isDarwin ''
     mkdir -p $out/bin
@@ -141,6 +145,22 @@ stdenv.mkDerivation {
       # Also put git-http-backend into $PATH, so that we can use smart
       # HTTP(s) transports for pushing
       ln -s $out/libexec/git-core/git-http-backend $out/bin/git-http-backend
+
+      # wrap perl commands
+      gitperllib=$out/lib/perl5/site_perl
+      for i in ${builtins.toString perlLibs}; do
+        gitperllib=$gitperllib:$i/lib/perl5/site_perl
+      done
+      wrapProgram $out/libexec/git-core/git-cvsimport \
+                  --set GITPERLLIB "$gitperllib"
+      wrapProgram $out/libexec/git-core/git-add--interactive \
+                  --set GITPERLLIB "$gitperllib"
+      wrapProgram $out/libexec/git-core/git-archimport \
+                  --set GITPERLLIB "$gitperllib"
+      wrapProgram $out/libexec/git-core/git-instaweb \
+                  --set GITPERLLIB "$gitperllib"
+      wrapProgram $out/libexec/git-core/git-cvsexportcommit \
+                  --set GITPERLLIB "$gitperllib"
     ''
 
    + (if svnSupport then
@@ -198,7 +218,7 @@ EOF
   enableParallelBuilding = true;
 
   meta = {
-    homepage = http://git-scm.com/;
+    homepage = https://git-scm.com/;
     description = "Distributed version control system";
     license = stdenv.lib.licenses.gpl2;
 

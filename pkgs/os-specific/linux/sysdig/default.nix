@@ -3,13 +3,13 @@
 with stdenv.lib;
 stdenv.mkDerivation rec {
   name = "sysdig-${version}";
-  version = "0.17.0";
+  version = "0.18.0";
 
   src = fetchFromGitHub {
     owner = "draios";
     repo = "sysdig";
     rev = version;
-    sha256 = "0xw4in2yb3ynpc8jwl95j92kbyr7fzda3mab8nyxcyld7gshrlvd";
+    sha256 = "1hmkjvfg3371hp873mnkjq9cirqszw2ji4p7mb6jcn9ihwxil2z2";
   };
 
   buildInputs = [
@@ -35,23 +35,7 @@ stdenv.mkDerivation rec {
     export KERNELDIR="${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
   '';
 
-  libPath = makeLibraryPath [
-    zlib
-    luajit
-    ncurses
-    jsoncpp
-    curl
-    jq
-    openssl
-    libb64
-    gcc
-    stdenv.cc.cc
-  ];
-
-  postInstall = optionalString (!stdenv.isDarwin) ''
-    patchelf --set-rpath "$libPath" "$out/bin/sysdig"
-    patchelf --set-rpath "$libPath" "$out/bin/csysdig"
-  '' + optionalString (kernel != null) ''
+  postInstall = optionalString (kernel != null) ''
     make install_driver
     kernel_dev=${kernel.dev}
     kernel_dev=''${kernel_dev#/nix/store/}

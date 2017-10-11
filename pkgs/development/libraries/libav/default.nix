@@ -28,8 +28,8 @@ let inherit (stdenv.lib) optional optionals hasPrefix; in
 let
   result = {
     libav_0_8 = libavFun "0.8.20" "0c7a2417c3a01eb74072691bb93ce802ae1be08f";
-    libav_11  = libavFun  "11.10" "38db6721ca8423682e4d614c170eccc33ba32e00";
-    libav_12  = libavFun "12"     "4ecde7274621c82a6882b7614d907b28de25cc4e";
+    libav_11  = libavFun "11.10"  "38db6721ca8423682e4d614c170eccc33ba32e00";
+    libav_12  = libavFun "12.2"   "3784b15f88076ca0ab8fb6b0377e975b83a5c9f5";
   };
 
   libavFun = version : sha1 : stdenv.mkDerivation rec {
@@ -70,7 +70,8 @@ let
       ++ optional freetypeSupport "--enable-libfreetype"
       ;
 
-    buildInputs = [ pkgconfig lame yasm zlib bzip2 SDL ]
+  nativeBuildInputs = [ pkgconfig ];
+    buildInputs = [ lame yasm zlib bzip2 SDL ]
       ++ [ perl ] # for install-man target
       ++ optional mp3Support lame
       ++ optional speexSupport speex
@@ -118,7 +119,7 @@ let
     passthru = { inherit vdpauSupport; };
 
     meta = with stdenv.lib; {
-      homepage = http://libav.org/;
+      homepage = https://libav.org/;
       description = "A complete, cross-platform solution to record, convert and stream audio and video (fork of ffmpeg)";
       license = with licenses; if enableUnfree then unfree #ToDo: redistributable or not?
         else if enableGPL then gpl2Plus else lgpl21Plus;

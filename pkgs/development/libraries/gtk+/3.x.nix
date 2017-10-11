@@ -13,7 +13,7 @@ with stdenv.lib;
 
 let
   ver_maj = "3.22";
-  ver_min = "16";
+  ver_min = "21";
   version = "${ver_maj}.${ver_min}";
 in
 stdenv.mkDerivation rec {
@@ -21,7 +21,7 @@ stdenv.mkDerivation rec {
 
   src = fetchurl {
     url = "mirror://gnome/sources/gtk+/${ver_maj}/gtk+-${version}.tar.xz";
-    sha256 = "3e0c3ad01f3c8c5c9b1cc1ae00852bd55164c8e5a9c1f90ba5e07f14f175fe2c";
+    sha256 = "1bd3c1a85cfb4db112cabb5379abb05a1a94fe43052d309d573493fca00e6b87";
   };
 
   outputs = [ "out" "dev" ];
@@ -83,7 +83,7 @@ stdenv.mkDerivation rec {
       royalties.
     '';
 
-    homepage = http://www.gtk.org/;
+    homepage = https://www.gtk.org/;
 
     license = licenses.lgpl2Plus;
 

@@ -8,13 +8,15 @@ let
     url="http://dev.gentoo.org/~blueness/eudev/eudev-${version}.tar.gz";
     sha256 = "06gyyl90n85x8i7lfhns514y1kg1ians13l467admyzy3kjxkqsp";
   };
+
+  nativeBuildInputs = [ pkgconfig ];
   buildInputs = [
-    glib pkgconfig gperf utillinux
+    glib gperf utillinux
   ];
 in
 stdenv.mkDerivation {
   inherit (s) name version;
-  inherit buildInputs;
+  inherit nativeBuildInputs buildInputs;
   src = fetchurl {
     inherit (s) url sha256;
   };
@@ -56,7 +58,7 @@ stdenv.mkDerivation {
     license = stdenv.lib.licenses.gpl2Plus ;
     maintainers = [stdenv.lib.maintainers.raskin];
     platforms = stdenv.lib.platforms.linux;
-    homepage = ''http://www.gentoo.org/proj/en/eudev/'';
+    homepage = ''https://www.gentoo.org/proj/en/eudev/'';
     downloadPage = ''http://dev.gentoo.org/~blueness/eudev/'';
     updateWalker = true;
   };

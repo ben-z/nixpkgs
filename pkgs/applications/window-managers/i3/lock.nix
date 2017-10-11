@@ -10,7 +10,8 @@ stdenv.mkDerivation rec {
     sha256 = "1467ha4ssbfjk1jh0ya2i5ljzm554ln18nyrppvsipg8shb1cshh";
   };
 
-  buildInputs = [ which pkgconfig libxcb xcbutilkeysyms xcbutilimage pam libX11
+  nativeBuildInputs = [ pkgconfig ];
+  buildInputs = [ which libxcb xcbutilkeysyms xcbutilimage pam libX11
     libev cairo libxkbcommon libxkbfile ];
 
   makeFlags = "all";
@@ -22,7 +23,7 @@ stdenv.mkDerivation rec {
 
   meta = with stdenv.lib; {
     description = "A simple screen locker like slock";
-    homepage = http://i3wm.org/i3lock/;
+    homepage = https://i3wm.org/i3lock/;
     maintainers = with maintainers; [ garbas malyn domenkozar ];
     license = licenses.bsd3;
     platforms = platforms.all;

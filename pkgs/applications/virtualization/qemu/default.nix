@@ -18,7 +18,7 @@
 
 with stdenv.lib;
 let
-  version = "2.9.0";
+  version = "2.9.1";
   audio = optionalString (hasSuffix "linux" stdenv.system) "alsa,"
     + optionalString pulseSupport "pa,"
     + optionalString sdlSupport "sdl,";
@@ -33,7 +33,7 @@ stdenv.mkDerivation rec {
 
   src = fetchurl {
     url = "http://wiki.qemu.org/download/qemu-${version}.tar.bz2";
-    sha256 = "053c7ivp3li7cdagzkp2wdc5myybzjf826r6qfkcf0xvn4bv5gq0";
+    sha256 = "1340hh4jvhvi97yqck408wi8aagnhzq1311ih0fq9bp4ddlk03sd";
   };
 
   buildInputs =
@@ -55,7 +55,8 @@ stdenv.mkDerivation rec {
   enableParallelBuilding = true;
 
   patches = [ ./no-etc-install.patch ]
-    ++ optional nixosTestRunner ./force-uid0-on-9p.patch;
+    ++ optional nixosTestRunner ./force-uid0-on-9p.patch
+    ++ optional pulseSupport ./fix-hda-recording.patch;
 
   hardeningDisable = [ "stackprotector" ];
 

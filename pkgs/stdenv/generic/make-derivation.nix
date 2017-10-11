@@ -41,30 +41,35 @@ rec {
     , __propagatedImpureHostDeps ? []
     , sandboxProfile ? ""
     , propagatedSandboxProfile ? ""
+
+    , hardeningEnable ? []
+    , hardeningDisable ? []
     , ... } @ attrs:
+
+    # TODO(@Ericson2314): Make this more modular, and not O(n^2).
     let
-      dependencies = [
-        (map (drv: drv.nativeDrv or drv) nativeBuildInputs)
+      supportedHardeningFlags = [ "fortify" "stackprotector" "pie" "pic" "strictoverflow" "format" "relro" "bindnow" ];
+      # hardeningDisable additionally supports "all".
+      erroneousHardeningFlags = lib.subtractLists supportedHardeningFlags (hardeningEnable ++ lib.remove "all" hardeningDisable);
+    in if builtins.length erroneousHardeningFlags != 0
+    then abort ("mkDerivation was called with unsupported hardening flags: " + lib.generators.toPretty {} {
+      inherit erroneousHardeningFlags hardeningDisable hardeningEnable supportedHardeningFlags;
+    })
+    else let
+      dependencies = map lib.chooseDevOutputs [
+        (map (drv: drv.nativeDrv or drv) nativeBuildInputs
+           ++ lib.optional separateDebugInfo ../../build-support/setup-hooks/separate-debug-info.sh
+           ++ lib.optional stdenv.hostPlatform.isWindows ../../build-support/setup-hooks/win-dll-link.sh)
         (map (drv: drv.crossDrv or drv) buildInputs)
       ];
-      propagatedDependencies = [
+      propagatedDependencies = map lib.chooseDevOutputs [
         (map (drv: drv.nativeDrv or drv) propagatedNativeBuildInputs)
         (map (drv: drv.crossDrv or drv) propagatedBuildInputs)
       ];
-    in let
 
       outputs' =
         outputs ++
         (if separateDebugInfo then assert stdenv.hostPlatform.isLinux; [ "debug" ] else []);
-
-      dependencies' = let
-          justMap = map lib.chooseDevOutputs dependencies;
-          nativeBuildInputs = lib.head justMap
-            ++ lib.optional separateDebugInfo ../../build-support/setup-hooks/separate-debug-info.sh
-            ++ lib.optional stdenv.hostPlatform.isWindows ../../build-support/setup-hooks/win-dll-link.sh;
-        in [ nativeBuildInputs ] ++ lib.tail justMap;
-
-      propagatedDependencies' = map lib.chooseDevOutputs propagatedDependencies;
 
       derivationArg =
         (removeAttrs attrs
@@ -73,18 +78,26 @@ rec {
            "sandboxProfile" "propagatedSandboxProfile"])
         // (let
           computedSandboxProfile =
-            lib.concatMap (input: input.__propagatedSandboxProfile or []) (stdenv.extraBuildInputs ++ lib.concatLists dependencies');
+            lib.concatMap (input: input.__propagatedSandboxProfile or [])
+              (stdenv.extraNativeBuildInputs
+               ++ stdenv.extraBuildInputs
+               ++ lib.concatLists dependencies);
           computedPropagatedSandboxProfile =
-            lib.concatMap (input: input.__propagatedSandboxProfile or []) (lib.concatLists propagatedDependencies');
+            lib.concatMap (input: input.__propagatedSandboxProfile or [])
+              (lib.concatLists propagatedDependencies);
           computedImpureHostDeps =
-            lib.unique (lib.concatMap (input: input.__propagatedImpureHostDeps or []) (stdenv.extraBuildInputs ++ lib.concatLists dependencies'));
+            lib.unique (lib.concatMap (input: input.__propagatedImpureHostDeps or [])
+              (stdenv.extraNativeBuildInputs
+               ++ stdenv.extraBuildInputs
+               ++ lib.concatLists dependencies));
           computedPropagatedImpureHostDeps =
-            lib.unique (lib.concatMap (input: input.__propagatedImpureHostDeps or []) (lib.concatLists propagatedDependencies'));
+            lib.unique (lib.concatMap (input: input.__propagatedImpureHostDeps or [])
+              (lib.concatLists propagatedDependencies));
         in
         {
           name = name + lib.optionalString
             (stdenv.hostPlatform != stdenv.buildPlatform)
-            stdenv.hostPlatform.config;
+            ("-" + stdenv.hostPlatform.config);
           builder = attrs.realBuilder or stdenv.shell;
           args = attrs.args or ["-e" (attrs.builder or ./default-builder.sh)];
           inherit stdenv;
@@ -92,11 +105,11 @@ rec {
           userHook = config.stdenv.userHook or null;
           __ignoreNulls = true;
 
-          nativeBuildInputs = lib.elemAt dependencies' 0;
-          buildInputs = lib.elemAt dependencies' 1;
+          nativeBuildInputs = lib.elemAt dependencies 0;
+          buildInputs = lib.elemAt dependencies 1;
 
-          propagatedNativeBuildInputs = lib.elemAt propagatedDependencies' 0;
-          propagatedBuildInputs = lib.elemAt propagatedDependencies' 1;
+          propagatedNativeBuildInputs = lib.elemAt propagatedDependencies 0;
+          propagatedBuildInputs = lib.elemAt propagatedDependencies 1;
 
           # This parameter is sometimes a string, sometimes null, and sometimes a list, yuck
           configureFlags = let inherit (lib) optional elem; in
